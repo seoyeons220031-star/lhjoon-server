@@ -11,10 +11,10 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
   });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // 채팅방 상태 (참여 중인 친구 목록 추가)
+  // 채팅방 상태 (알림 ON/OFF 속성인 isMuted 추가)
   const [rooms, setRooms] = useState([
-    { id: 1, name: '도란도란 대화방 💬', lastMsg: 'LHJOON 라이브에 오신 걸 환영해요!', unread: 0, creator: '관리자', notice: '서로 예쁜 말만 사용하기로 해요 오손도손 소통방입니다.', members: ['관리자', '사용자'] },
-    { id: 2, name: '오늘 머먹지? 🍕', lastMsg: '여기 맛집 추천 좀 해주라!', unread: 0, creator: myProfile.nickname, notice: null, members: [myProfile.nickname] }
+    { id: 1, name: '도란도란 대화방 💬', lastMsg: 'LHJOON 라이브에 오신 걸 환영해요!', unread: 0, creator: '관리자', notice: '서로 예쁜 말만 사용하기로 해요 오손도손 소통방입니다.', members: ['관리자', '사용자'], isMuted: false },
+    { id: 2, name: '오늘 머먹지? 🍕', lastMsg: '여기 맛집 추천 좀 해주라!', unread: 0, creator: myProfile.nickname, notice: null, members: [myProfile.nickname], isMuted: false }
   ]);
   const [activeRoomId, setActiveRoomId] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,15 +31,34 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
 
   useEffect(() => {
     socket.on("chat message", (data) => {
+      // 1. 아이디(메시지 고유 ID) 중복 생성 및 수신 원천 방지
       setMessages((prev) => {
         const isDuplicate = prev.some(m => m.id === data.id);
         if (isDuplicate) return prev;
         return [...prev, { ...data, isMe: data.sender === myProfile.nickname }];
       });
+
       setRooms(prevRooms => 
-        prevRooms.map(r => r.id === data.roomId ? { ...r, lastMsg: data.type === 'image' ? '🖼️ 사진이 도착했어요' : data.content } : r)
+        prevRooms.map(r => {
+          if (r.id === data.roomId) {
+            // 2. 알림이 켜진(isMuted: false) 방에 다른 사람이 새 메시지를 보냈을 때 브라우저 기본 알림창 울리기
+            if (!r.isMuted && data.sender !== myProfile.nickname) {
+              if (Notification.permission === "granted") {
+                new Notification(`[${r.name}] ${data.sender}`, { body: data.content });
+              }
+            }
+            return { ...r, lastMsg: data.type === 'image' ? '🖼️ 사진이 도착했어요' : data.content };
+          }
+          return r;
+        })
       );
     });
+
+    // 시스템 브라우저 알림 권한 미리 요청
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+
     return () => { socket.off("chat message"); };
   }, [myProfile.nickname]);
 
@@ -55,8 +74,11 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
     e.preventDefault();
     if (!message.trim()) return;
 
+    // 밀리초와 무작위 난수를 섞어 중복 생성이 절대 불가능한 유일 ID 발급
+    const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
+
     const newMsg = {
-      id: Date.now(),
+      id: uniqueId,
       roomId: activeRoomId,
       sender: myProfile.nickname,
       type: 'text',
@@ -74,8 +96,10 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
 
   const processImageFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
+    const uniqueId = Date.now() + Math.floor(Math.random() * 1000);
+
     const newImgMsg = {
-      id: Date.now(),
+      id: uniqueId,
       roomId: activeRoomId,
       sender: myProfile.nickname,
       type: 'image',
@@ -99,9 +123,8 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
             alert('이미 방에 있는 친구입니다.');
             return room;
           }
-          // 초대 안내 메시지 자동 추가
           const systemMsg = {
-            id: Date.now(),
+            id: Date.now() + Math.floor(Math.random() * 1000),
             roomId: activeRoomId,
             sender: '시스템',
             type: 'text',
@@ -119,19 +142,24 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
 
   // 채팅방 삭제(나가기) 기능
   const handleDeleteRoom = (roomId, roomName, e) => {
-    e.stopPropagation(); // 방 선택 이벤트로 번지는 것 막기
+    e.stopPropagation(); 
     if (!confirm(`'${roomName}' 방을 삭제하고 나가시겠습니까?`)) return;
 
     const remainingRooms = rooms.filter(r => r.id !== roomId);
     setRooms(remainingRooms);
-    
-    // 삭제한 방의 메시지들도 정리
     setMessages(prev => prev.filter(m => m.roomId !== roomId));
 
-    // 만약 현재 보던 방을 삭제했다면 다른 방으로 이동
     if (activeRoomId === roomId && remainingRooms.length > 0) {
       setActiveRoomId(remainingRooms[0].id);
     }
+  };
+
+  // 개별 채팅방 알림 토글(ON/OFF) 기능
+  const toggleMuteRoom = (roomId, e) => {
+    e.stopPropagation();
+    setRooms(prevRooms =>
+      prevRooms.map(r => r.id === roomId ? { ...r, isMuted: !r.isMuted } : r)
+    );
   };
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -185,27 +213,39 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
         <div className="p-3">
           <button onClick={() => {
             const name = prompt('방 이름을 입력하세요:');
-            if (name?.trim()) setRooms([...rooms, { id: Date.now(), name: name.trim() + ' 🎈', lastMsg: '새 방이 개설되었어요!', unread: 0, creator: myProfile.nickname, notice: null, members: [myProfile.nickname] }]);
+            if (name?.trim()) setRooms([...rooms, { id: Date.now(), name: name.trim() + ' 🎈', lastMsg: '새 방이 개설되었어요!', unread: 0, creator: myProfile.nickname, notice: null, members: [myProfile.nickname], isMuted: false }]);
           }} className="w-full py-2.5 bg-white hover:bg-[#FDFBF7] text-[#7A5F56] rounded-xl flex items-center justify-center space-x-2 text-xs font-bold border border-[#D5C2B4]">
             <span>➕ 새로운 이야기방 만들기</span>
           </button>
         </div>
 
-        {/* 방 리스트 및 삭제 버튼 추가 */}
+        {/* 방 목록 사이드바 */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
           {filteredRooms.map(room => (
             <div key={room.id} onClick={() => setActiveRoomId(room.id)} className={`p-3 rounded-xl cursor-pointer flex items-center justify-between group ${room.id === activeRoomId ? 'bg-white text-[#FF5252] shadow-md border border-[#FFC1C1] font-bold' : 'hover:bg-white/50 text-[#4E4140]'}`}>
               <div className="min-w-0 flex-1">
-                <span className="text-sm truncate block">✨ {room.name}</span>
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-sm truncate">✨ {room.name}</span>
+                  {room.isMuted && <span className="text-xs text-gray-400" title="알림 끔">🔕</span>}
+                </div>
                 <p className="text-xs mt-1 truncate text-[#8A7371] font-normal">{room.lastMsg}</p>
               </div>
-              <button 
-                onClick={(e) => handleDeleteRoom(room.id, room.name, e)}
-                className="text-xs text-gray-400 hover:text-red-500 ml-2 p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-                title="방 삭제하기"
-              >
-                ❌
-              </button>
+              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                <button 
+                  onClick={(e) => toggleMuteRoom(room.id, e)}
+                  className="text-xs p-1 rounded hover:bg-gray-200"
+                  title={room.isMuted ? "알림 켜기" : "알림 끄기"}
+                >
+                  {room.isMuted ? "🔔" : "🔕"}
+                </button>
+                <button 
+                  onClick={(e) => handleDeleteRoom(room.id, room.name, e)}
+                  className="text-xs p-1 rounded hover:bg-gray-200"
+                  title="방 삭제하기"
+                >
+                  ❌
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -213,10 +253,19 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
 
       {/* 대화창 */}
       <div className="flex-1 flex flex-col bg-[#FDFBF7]">
-        {/* 상단바 및 친구초대 버튼 추가 */}
+        {/* 상단바 및 상단 알림 설정 버튼 */}
         <div className="h-16 border-b border-[#E0D0C5] px-6 flex items-center justify-between bg-white shadow-sm">
           <div>
-            <h2 className="font-bold text-base text-[#2C2524]">✨ {currentRoom?.name}</h2>
+            <div className="flex items-center space-x-2">
+              <h2 className="font-bold text-base text-[#2C2524]">✨ {currentRoom?.name}</h2>
+              <button 
+                onClick={(e) => toggleMuteRoom(currentRoom?.id, e)}
+                className="text-sm px-1.5 py-0.5 rounded border border-gray-200 hover:bg-gray-50 font-normal"
+                title={currentRoom?.isMuted ? "클릭하면 알림을 켭니다" : "클릭하면 알림을 끕니다"}
+              >
+                {currentRoom?.isMuted ? "🔕 알림 꺼짐" : "🔔 알림 켜짐"}
+              </button>
+            </div>
             <p className="text-[11px] text-gray-500 font-medium mt-0.5">참여 중: {currentRoom?.members?.join(', ')}</p>
           </div>
           <div className="flex items-center space-x-3">
@@ -236,7 +285,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           </div>
         )}
 
-        {/* 메시지창 */}
+        {/* 메시지창 (답글 연동 유지) */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#FAF7F0]">
           {currentRoomMessages.map((msg) => (
             <div key={msg.id} className={`flex items-start space-x-3 ${msg.isMe ? 'justify-end space-x-reverse' : ''}`}>
