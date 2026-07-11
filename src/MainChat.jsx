@@ -14,6 +14,9 @@ const socket = {
 // 로고 이미지 경로 설정
 const LHJOON_LOGO_URL = '/logo.png';
 
+// 시스템 기본 알림음 (공공 오디오 링크 대체)
+const NOTIFICATION_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-500.wav';
+
 const themes = {
   green: { name: '포레스트 그린 🌿', bg: 'bg-[#000000]', sidebar: 'bg-[#022c22]', sidebarHeader: 'bg-[#064e3b]', border: 'border-[#0f766e]', inputBorder: 'border-[#115e59]', chatBg: 'bg-[#021e17]', myMsg: 'bg-[#065f46] border-[#10b981] text-white font-semibold', otherMsg: 'bg-[#115e59] border-[#14b8a6] text-white font-semibold', text: 'text-[#f0fdf4]', accent: 'bg-[#22c55e] text-white' },
   peach: { name: '피치 핑크 🍑', bg: 'bg-[#fff5f5]', sidebar: 'bg-[#ffe3e3]', sidebarHeader: 'bg-[#ffccd5]', border: 'border-[#ffa3a3]', inputBorder: 'border-[#ffb3b3]', chatBg: 'bg-[#fff9f9]', myMsg: 'bg-[#ff8787] border-[#ff6b6b] text-white font-semibold', otherMsg: 'bg-[#f1f3f5] border-[#e9ecef] text-[#495057] font-semibold', text: 'text-[#495057]', accent: 'bg-[#ff6b6b] text-white' },
@@ -40,14 +43,26 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   const [editStatus, setEditStatus] = useState(myProfile.statusMsg);
   const [editAvatar, setEditAvatar] = useState(myProfile.avatar);
 
-  const [friends, setFriends] = useState([{ name: '관리자', email: 'admin@lhjoon.com', isBlocked: false }]);
+  const [friends, setFriends] = useState(() => {
+    const saved = localStorage.getItem('lhjoon_friends');
+    return saved ? JSON.parse(saved) : [{ name: '관리자', email: 'admin@lhjoon.com', isBlocked: false }];
+  });
   const [addFriendInput, setAddFriendInput] = useState('');
 
-  // 기본 방 목록을 완전히 비워둡니다.
-  const [rooms, setRooms] = useState([]);
-  const [activeRoomId, setActiveRoomId] = useState(null);
+  const [rooms, setRooms] = useState(() => {
+    const saved = localStorage.getItem('lhjoon_rooms');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [activeRoomId, setActiveRoomId] = useState(() => {
+    const saved = localStorage.getItem('lhjoon_active_room_id');
+    return saved ? Number(saved) : null;
+  });
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('lhjoon_messages');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [message, setMessage] = useState('');
   const [replyTarget, setReplyTarget] = useState(null);
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -74,6 +89,57 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   const [activeViewerFile, setActiveViewerFile] = useState(null);
   const fileInputRef = useRef(null);
 
+  // 알림음 재생 함수
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio(NOTIFICATION_SOUND_URL);
+      audio.volume = 0.8;
+      audio.play().catch(err => console.log('오디오 재생은 사용자 상호작용(클릭)이 필요합니다:', err));
+    } catch (e) {
+      console.error('사운드 파일 재생 실패:', e);
+    }
+  };
+
+  // 백그라운드 푸시 알림 발송 함수
+  const sendBackgroundNotification = (title, body) => {
+    if (!('Notification' in window)) return;
+    
+    if (Notification.permission === 'granted') {
+      new Notification(title, {
+        body: body,
+        icon: LHJOON_LOGO_URL,
+        tag: 'lhjoon-chat'
+      });
+    }
+  };
+
+  // 컴포넌트 마운트 시 브라우저 알림 권한 요청
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('lhjoon_friends', JSON.stringify(friends));
+  }, [friends]);
+
+  useEffect(() => {
+    localStorage.setItem('lhjoon_rooms', JSON.stringify(rooms));
+  }, [rooms]);
+
+  useEffect(() => {
+    if (activeRoomId) {
+      localStorage.setItem('lhjoon_active_room_id', activeRoomId);
+    } else {
+      localStorage.removeItem('lhjoon_active_room_id');
+    }
+  }, [activeRoomId]);
+
+  useEffect(() => {
+    localStorage.setItem('lhjoon_messages', JSON.stringify(messages));
+  }, [messages]);
+
   useEffect(() => {
     if (rooms.length > 0) {
       socket.emit("join rooms", rooms.map(r => r.id));
@@ -83,9 +149,27 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
       const blockedUsers = friends.filter(f => f.isBlocked).map(f => f.name);
       if (blockedUsers.includes(data.sender)) return;
 
+      const isMe = data.sender === myProfile.nickname;
+
+      // 내가 보낸 메시지가 아닐 때만 소리 및 백그라운드 알림 처리
+      if (!isMe) {
+        const targetRoom = rooms.find(r => r.id === data.roomId);
+        const isMuted = targetRoom ? targetRoom.isMuted : false;
+
+        if (!isMuted) {
+          playNotificationSound();
+        }
+
+        // 사용자가 다른 탭을 보고 있거나 창이 비활성화 상태일 때 푸시 알림 작동
+        if (document.hidden) {
+          const roomName = targetRoom ? targetRoom.name : 'LHJOON 메신저';
+          sendBackgroundNotification(`💬 ${roomName} - ${data.sender}`, data.type === 'text' ? data.content : '[파일 전송됨]');
+        }
+      }
+
       setMessages((prev) => {
         if (prev.some(m => m.id === data.id)) return prev;
-        return [...prev, { ...data, isMe: data.sender === myProfile.nickname }];
+        return [...prev, { ...data, isMe: isMe }];
       });
       setRooms(prev => prev.map(r => r.id === data.roomId ? { ...r, lastMsg: data.type === 'text' ? data.content : '[파일 전송됨]' } : r));
     });
