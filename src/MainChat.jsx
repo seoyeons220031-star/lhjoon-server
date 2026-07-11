@@ -8,7 +8,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
   const [myProfile, setMyProfile] = useState({
     nickname: initialNickname || '사용자',
     statusMsg: '오늘도 좋은 하루 친하게 지내요 ☕',
-    avatarBg: '#FF8E8E' // 조금 더 진한 파스텔 핑크
+    avatarBg: '#FF8E8E'
   });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -92,11 +92,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
   const filteredRooms = rooms.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="flex h-screen bg-[#FDFBF7] text-[#2C2524] font-sans relative"
-         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-         onDragLeave={() => setIsDragging(false)}
-         onDrop={(e) => { e.preventDefault(); setIsDragging(false); processImageFile(e.dataTransfer.files[0]); }}>
-      
+    <div className="flex h-screen bg-[#FDFBF7] text-[#2C2524] font-sans relative">
       {isDragging && (
         <div className="absolute inset-0 z-50 bg-[#F5EBE6]/95 border-4 border-dashed border-[#FF8E8E] flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
           <p className="text-xl font-bold text-[#7A5F56]">여기에 사진을 놓으면 전송됩니다 🧸</p>
@@ -172,28 +168,23 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           </div>
         )}
 
-        {/* 메시지 타임라인 (배경을 조금 더 밝게 하여 텍스트 강조) */}
+        {/* 메시지 타임라인 */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#FAF7F0]">
           {currentRoomMessages.map((msg) => (
             <div key={msg.id} className={`flex items-start space-x-3 ${msg.isMe ? 'justify-end space-x-reverse' : ''}`}>
-              
               {!msg.isMe && (
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0 bg-[#A39084]">
                   {msg.sender[0]}
                 </div>
               )}
-
               <div className="flex flex-col max-w-lg">
                 {!msg.isMe && <span className="text-xs font-bold text-[#5C4B49] mb-1 ml-1">{msg.sender}</span>}
-                
                 {msg.replyTo && (
                   <div className="bg-[#EAD9CE] text-xs font-medium text-[#5C4B49] px-2.5 py-1 rounded-t-lg mb-[-1px] border border-b-0 border-[#D5C2B4] truncate">
                     ↩️ {msg.replyTo.sender}: {msg.replyTo.content}
                   </div>
                 )}
-
                 <div className="flex items-end space-x-2 space-x-reverse">
-                  {/* 패딩과 텍스트 크기, 두께를 키워 가독성 극대화 */}
                   <div className={`px-4 py-2.5 text-[15px] leading-relaxed rounded-2xl shadow-sm border ${
                     msg.isMe 
                       ? 'bg-[#FFA3A3] text-[#1A1110] border-[#FF8E8E] rounded-tr-none font-medium' 
@@ -219,11 +210,9 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
               <button onClick={() => setReplyTarget(null)}><X size={14}/></button>
             </div>
           )}
-
           <form onSubmit={handleSendMessage} className="flex items-center space-x-3 bg-[#FDFBF7] border border-[#D5C2B4] rounded-2xl px-4 py-3 focus-within:border-[#FF8E8E] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#FF8E8E] transition-all shadow-inner">
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => processImageFile(e.target.files[0])} />
             <button type="button" onClick={() => fileInputRef.current.click()} className="text-[#7A5F56] hover:text-[#FF5252] transition-colors"><Image size={20} /></button>
-            
             <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="따뜻한 이야기를 나누어보세요..." className="flex-1 bg-transparent border-none outline-none text-sm text-[#2C2524] placeholder-[#A5908E]" />
             <button type="submit" disabled={!message.trim()} className="text-[#FF5252] disabled:text-[#D5C2B4] transition-colors font-bold text-base px-1">전송</button>
           </form>
@@ -236,7 +225,6 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           <div className="bg-white border border-[#D5C2B4] w-full max-w-sm rounded-2xl p-6 relative shadow-2xl text-sm">
             <button onClick={() => setIsProfileModalOpen(false)} className="absolute top-4 right-4 text-[#7A5F56] hover:text-[#2C2524]"><X size={18} /></button>
             <h3 className="text-sm font-bold text-[#2C2524] mb-4 flex items-center space-x-2"><User size={16}/> <span>프로필 바꾸기</span></h3>
-            
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-[#7A5F56] mb-1">내 이름</label>
