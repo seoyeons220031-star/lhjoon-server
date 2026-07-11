@@ -14,12 +14,12 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
 
   const [rooms, setRooms] = useState([
     { id: 1, name: '도란도란 대화방 💬', lastMsg: 'LHJOON 라이브에 오신 걸 환영해요!', unread: 0, creator: '관리자', notice: '서로 예쁜 말만 사용하기로 해요 오손도손 소통방입니다.', isMuted: false },
-    { id: 2, name: '오늘 머먹지? 🍕', lastMsg: '여기 맛집 추천 좀 해주라!', unread: 0, creator: myProfile.nickname, notice: null, isMuted: false },
+    { id: 2, name: '오늘 머먹지? 🍕', lastMsg: '여기 맛집 추천 좀 해주라!', unread: 0, creator: myProfile.nickname, notice: null, isMuted: false }
   ]);
   const [activeRoomId, setActiveRoomId] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [messages, setMessages] = useState([
-    { id: 1, roomId: 1, sender: '관리자', type: 'text', content: 'LHJOON 라이브에 오신 걸 환영해요! 편하게 이야기 나눠요 🤍', time: '오후 9:44', isMe: false, emojis: {} },
+    { id: 1, roomId: 1, sender: '관리자', type: 'text', content: 'LHJOON 라이브에 오신 걸 환영해요! 편하게 이야기 나눠요 🤍', time: '오후 9:44', isMe: false, emojis: {} }
   ]);
 
   const [message, setMessage] = useState('');
