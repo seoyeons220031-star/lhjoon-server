@@ -1,15 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client'; // 실제 소켓 패키지 도입
+// socket.io-client 가져오기 제거 (빌드 에러 방지)
 import { 
   Edit2, UserPlus, BellOff, Trash2, Shield, Calendar, FileText, Search, 
   Clock, Heart, Archive, Smile, Reply, Paperclip, MoreVertical, Check, Eye, Download, MessageSquare, ShieldAlert, DownloadCloud, Settings, Menu, X, LogOut
 } from 'lucide-react';
 
-// ⚠️ 본인의 실제 Node.js / Socket.io 백엔드 서버 주소를 입력하세요.
-const SERVER_URL = 'http://localhost:4000'; 
-const socket = io(SERVER_URL, { autoConnect: false });
+// 임시 가짜 소켓 객체 복원 및 친구 초대 모방 기능 추가
+const socket = {
+  connect: () => console.log("임시 소켓 연결됨"),
+  disconnect: () => console.log("임시 소켓 해제됨"),
+  emit: (event, data) => {
+    console.log(`[소켓 전송] 이벤트: ${event}`, data);
+  },
+  on: (event, callback) => {
+    // 초대 기능을 테스트해볼 수 있도록 윈도우 전역 함수로 임시 등록
+    if (event === "room invited") {
+      window.triggerFakeInvite = callback;
+    }
+  },
+  off: () => {}
+};
 
-// 로고 이미지 경로 설정
 const LHJOON_LOGO_URL = '/logo.png';
 const NOTIFICATION_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-500.wav';
 
@@ -19,7 +30,7 @@ const themes = {
   blue: { name: '클래식 블루 💙', bg: 'bg-[#000000]', sidebar: 'bg-[#0f172a]', sidebarHeader: 'bg-[#1e293b]', border: 'border-[#334155]', inputBorder: 'border-[#475569]', chatBg: 'bg-[#090d16]', myMsg: 'bg-[#1e40af] border-[#3b82f6] text-white font-semibold', otherMsg: 'bg-[#334155] border-[#475569] text-white font-semibold', text: 'text-[#f8fafc]', accent: 'bg-[#3b82f6] text-white' },
   dark: { name: '미드나잇 다크 🌙', bg: 'bg-[#000000]', sidebar: 'bg-[#020617]', sidebarHeader: 'bg-[#0f172a]', border: 'border-[#1e293b]', inputBorder: 'border-[#334155]', chatBg: 'bg-[#090d16]', myMsg: 'bg-[#1e293b] border-[#475569] text-white font-semibold', otherMsg: 'bg-[#334155] border-[#475569] text-white font-semibold', text: 'text-[#f8fafc]', accent: 'bg-[#38bdf8] text-black' },
   orange: { name: '선셋 오렌지 🍊', bg: 'bg-[#000000]', sidebar: 'bg-[#2d0f05]', sidebarHeader: 'bg-[#451a03]', border: 'border-[#7c2d12]', inputBorder: 'border-[#9a3412]', chatBg: 'bg-[#1c0a04]', myMsg: 'bg-[#9a3412] border-[#f97316] text-white font-semibold', otherMsg: 'bg-[#451a03] border-[#7c2d12] text-white font-semibold', text: 'text-[#fff7ed]', accent: 'bg-[#ea580c] text-white' },
-  purple: { name: '코지 퍼플 🍇', bg: 'bg-[#000000]', sidebar: 'bg-[#1b063a]', sidebarHeader: 'bg-[#2e1065]', border: 'border-[#4c1d95]', inputBorder: 'border-[#5b21b6]', chatBg: 'bg-[#140326]', myMsg: 'bg-[#5b21b6] border-[#8b5cf6] text-white font-semibold', otherMsg: 'bg-[#2e1065] border-[#4c1d95] text-white font-semibold', text: 'text-[#f5f3ff]', accent: 'bg-[#8b5cf6] text-white' }
+  purple: { name: '코지 퍼フル 🍇', bg: 'bg-[#000000]', sidebar: 'bg-[#1b063a]', sidebarHeader: 'bg-[#2e1065]', border: 'border-[#4c1d95]', inputBorder: 'border-[#5b21b6]', chatBg: 'bg-[#140326]', myMsg: 'bg-[#5b21b6] border-[#8b5cf6] text-white font-semibold', otherMsg: 'bg-[#2e1065] border-[#4c1d95] text-white font-semibold', text: 'text-[#f5f3ff]', accent: 'bg-[#8b5cf6] text-white' }
 };
 
 export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) {
@@ -68,20 +79,6 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
 
   const [integratedSearchQuery, setIntegratedSearchQuery] = useState('');
 
-  const [capsules, setCapsules] = useState([]);
-  const [showCapsuleModal, setShowCapsuleModal] = useState(false);
-  const [capsuleText, setCapsuleText] = useState('');
-  const [capsuleTime, setCapsuleTime] = useState('');
-  const [memories, setMemories] = useState([{ id: 1, date: '2026-06', sentence: '소중한 사람들과 함께 나눈 따뜻한 대화 기록' }]);
-  const [showMemoryModal, setShowMemoryModal] = useState(false);
-  const [schedules, setSchedules] = useState([]);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [scheduleTitle, setScheduleTitle] = useState('');
-  const [scheduleDate, setScheduleDate] = useState('');
-  const [personalMemo, setPersonalMemo] = useState(localStorage.getItem('lhjoon_personal_memo') || '');
-  const [sharedMemo, setSharedMemo] = useState('팀원들과 같이 쓰는 실시간 공유 메모 공간입니다.');
-  const [showMemoModal, setShowMemoModal] = useState(false);
-
   const [activeViewerFile, setActiveViewerFile] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -106,7 +103,6 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
       Notification.requestPermission();
     }
     
-    // 소켓 서버 연결 및 내 식별 정보 등록
     socket.connect();
     socket.emit("register user", myProfile.nickname);
 
@@ -115,7 +111,6 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
     };
   }, [myProfile.nickname]);
 
-  // 로컬스토리지 동기화
   useEffect(() => { localStorage.setItem('lhjoon_friends', JSON.stringify(friends)); }, [friends]);
   useEffect(() => { localStorage.setItem('lhjoon_rooms', JSON.stringify(rooms)); }, [rooms]);
   useEffect(() => {
@@ -124,9 +119,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   }, [activeRoomId]);
   useEffect(() => { localStorage.setItem('lhjoon_messages', JSON.stringify(messages)); }, [messages]);
 
-  // 실시간 소켓 이벤트 리스너 리액트 연동
   useEffect(() => {
-    // 1. 누군가 나를 초대했을 때 서버가 보내주는 이벤트
     socket.on("room invited", (newRoom) => {
       setRooms((prev) => {
         if (prev.some(r => r.id === newRoom.id)) return prev;
@@ -136,7 +129,6 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
       sendBackgroundNotification("📢 새로운 채팅방 초대", `"${newRoom.name}" 채팅방에 초대되었습니다.`);
     });
 
-    // 2. 새로운 메시지가 수신되었을 때
     socket.on("chat message", (data) => {
       const blockedUsers = friends.filter(f => f.isBlocked).map(f => f.name);
       if (blockedUsers.includes(data.sender)) return;
@@ -158,23 +150,14 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
       setRooms(prev => prev.map(r => r.id === data.roomId ? { ...r, lastMsg: data.type === 'text' ? data.content : '[파일]' } : r));
     });
 
-    socket.on("typing notification", (data) => {
-      if (data.roomId === activeRoomId && data.user !== myProfile.nickname) {
-        setTypingUser(data.user);
-        setIsTyping(data.isTyping);
-      }
-    });
-
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); setDeferredPrompt(e); });
 
     return () => {
       socket.off("room invited");
       socket.off("chat message");
-      socket.off("typing notification");
     };
   }, [activeRoomId, friends, myProfile.nickname, rooms]);
 
-  // 신규 채팅방 생성 및 서버 등록
   const handleCreateRoom = () => {
     const n = prompt('생성할 그룹 채팅방 이름을 작성하세요:');
     if (!n?.trim()) return;
@@ -190,12 +173,9 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
 
     setRooms([...rooms, newRoom]);
     setActiveRoomId(newRoom.id);
-    
-    // 서버를 통해 내가 방을 만들었음을 보냄 (서버 조인 처리용)
     socket.emit("create room", newRoom);
   };
 
-  // 실시간 친구 초대 시스템 고도화
   const handleInviteFriend = () => {
     if (!activeRoomId || !currentRoom) return;
     const targetFriend = prompt('초대할 친구의 정확한 닉네임을 입력하세요:');
@@ -204,23 +184,20 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
     const updatedMembers = [...currentRoom.members, targetFriend.trim()];
     const updatedRoom = { ...currentRoom, members: updatedMembers };
 
-    // 내 로컬 상태 변경
     setRooms(rooms.map(r => r.id === activeRoomId ? updatedRoom : r));
 
-    // 🌟 핵심: 서버로 친구 초대 이벤트를 전송하여 상대방에게 실시간으로 방 데이터를 꽂아줌
     socket.emit("invite user", {
       roomId: activeRoomId,
       roomData: updatedRoom,
       targetUser: targetFriend.trim()
     });
 
-    alert(`"${targetFriend}"님을 실시간으로 초대했습니다.`);
+    alert(`"${targetFriend}"님을 초대 목록에 기록했습니다. (백엔드 서버 연동 시 실시간 수신 가능)`);
   };
 
   const handleInputChange = (e) => {
     if (!activeRoomId) return;
     setMessage(e.target.value);
-    socket.emit("typing notification", { roomId: activeRoomId, user: myProfile.nickname, isTyping: e.target.value.length > 0 });
   };
 
   const handleSendMessage = (e) => {
@@ -235,57 +212,17 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
       content: message,
       fileUrl: null,
       time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      replyTo: replyTarget ? { sender: replyTarget.sender, content: replyTarget.content } : null,
+      replyTo: null,
       reactions: {},
       isMe: true
     };
 
     setMessages((prev) => [...prev, newMsg]);
     setRooms(prev => prev.map(r => r.id === activeRoomId ? { ...r, lastMsg: newMsg.content } : r));
-    
-    // 서버로 실시간 메시지 발송
     socket.emit("chat message", newMsg);
-    
     setMessage('');
-    setReplyTarget(null);
-    socket.emit("typing notification", { roomId: activeRoomId, user: myProfile.nickname, isTyping: false });
   };
 
-  const handleFileUploadClick = (e) => {
-    if (!activeRoomId) return;
-    const file = e.target.files[0];
-    if (!file) return;
-
-    let fileType = 'file';
-    if (file.type.startsWith('image/')) fileType = 'image';
-    else if (file.type.startsWith('video/')) fileType = 'video';
-    else if (file.type === 'application/pdf') fileType = 'pdf';
-
-    const objectUrl = URL.createObjectURL(file);
-
-    const fileMsg = {
-      id: Date.now() + Math.random(),
-      roomId: activeRoomId,
-      sender: myProfile.nickname,
-      type: fileType,
-      content: file.name,
-      fileUrl: objectUrl,
-      time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      replyTo: null,
-      reactions: {},
-      isMe: true
-    };
-
-    setMessages((prev) => [...prev, fileMsg]);
-    setRooms(prev => prev.map(r => r.id === activeRoomId ? { ...r, lastMsg: `[파일] ${file.name}` } : r));
-    socket.emit("chat message", fileMsg);
-    e.target.value = '';
-  };
-
-  const handleExecuteDeleteMessage = (id) => { setMessages(prev => prev.filter(m => m.id !== id)); };
-  const handleExecuteUpdateMessage = (id) => { setMessages(prev => prev.map(m => m.id === id ? { ...m, content: editMessageText + ' (수정됨)' } : m)); setEditingMessageId(null); };
-  const handleAddReaction = (msgId, emoji) => { setMessages(prev => prev.map(m => m.id === msgId ? { ...m, reactions: { ...m.reactions, [emoji]: (m.reactions[emoji] || 0) + 1 } } : m)); };
-  const handleAddFriendSubmit = () => { if (!addFriendInput.trim()) return; setFriends([...friends, { name: addFriendInput.trim(), email: `${addFriendInput.trim()}@lhjoon.com`, isBlocked: false }]); setAddFriendInput(''); alert('친구 추가 완료'); };
   const handleExitOrDeleteRoom = (id) => { if (!window.confirm('방을 삭제하시겠습니까?')) return; const next = rooms.filter(r => r.id !== id); setRooms(next); setMessages(prev => prev.filter(m => m.roomId !== id)); if (activeRoomId === id) setActiveRoomId(next.length > 0 ? next[0].id : null); };
   const handleSaveProfile = () => { setMyProfile({ nickname: editName, statusMsg: editStatus, avatar: editAvatar }); setIsProfileModalOpen(false); };
 
@@ -294,8 +231,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
 
   return (
     <div className={`flex h-screen w-full overflow-hidden ${t.bg} ${t.text} text-sm font-sans p-2 relative`}>
-      
-      {/* 왼쪽 사이드바 */}
+      {/* 사이드바 */}
       <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80 mr-2' : 'w-0 opacity-0 pointer-events-none mr-0'} ${t.sidebar} border rounded-2xl ${t.border} flex flex-col h-full z-10 shadow-lg overflow-hidden`}>
         <div className={`p-4 border-b ${t.border} ${t.sidebarHeader} flex items-center justify-between`}>
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setIsProfileModalOpen(true)}>
@@ -408,6 +344,25 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
         </div>
       </div>
 
+      {/* 설정 모달 */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 max-w-md w-full shadow-2xl text-zinc-800">
+            <h3 className="font-bold text-base mb-4 border-b border-zinc-200 pb-2 flex items-center gap-2">⚙️ LHJOON 시스템 설정</h3>
+            <div className="space-y-3 text-xs mb-5">
+              <div><label className="block mb-1 font-bold text-zinc-500">아바타 이미지 URL</label><input type="text" value={editAvatar} onChange={e => setEditAvatar(e.target.value)} className="w-full border border-zinc-300 bg-zinc-50 p-2 rounded-xl outline-none" /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="block mb-1 font-bold text-zinc-500">닉네임</label><input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full border border-zinc-300 bg-zinc-50 p-2 rounded-xl outline-none" /></div>
+                <div><label className="block mb-1 font-bold text-zinc-500">상태메시지</label><input type="text" value={editStatus} onChange={e => setEditStatus(e.target.value)} className="w-full border border-zinc-300 bg-zinc-50 p-2 rounded-xl outline-none" /></div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setIsProfileModalOpen(false)} className="w-1/3 bg-zinc-100 border border-zinc-300 py-2 rounded-xl text-xs">닫기</button>
+              <button type="button" onClick={handleSaveProfile} className="w-2/3 bg-zinc-800 text-white py-2 rounded-xl text-xs font-bold">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
