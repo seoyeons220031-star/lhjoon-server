@@ -22,7 +22,8 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   const [currentThemeKey, setCurrentThemeKey] = useState('green');
   const t = themes[currentThemeKey];
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  // 로그인 직후 처음 들어왔을 때 옆 바를 안 보이게(닫힘 상태) 처리
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   // 프로필 상태
@@ -246,7 +247,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   return (
     <div className={`flex h-screen w-full overflow-hidden ${t.bg} ${t.text} text-sm font-sans bg-black p-2 relative`}>
       
-      {/* 왼쪽 사이드바 */}
+      {/* 왼쪽 사이드바 (기본 닫힘 상태) */}
       <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80 mr-2' : 'w-0 opacity-0 pointer-events-none mr-0'} ${t.sidebar} border rounded-2xl ${t.border} flex flex-col h-full z-10 shadow-lg overflow-hidden`}>
         
         {/* 상단 프로필 및 제어 바 */}
@@ -343,15 +344,15 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
       {/* 우측 메인 대화 영역 */}
       <div className="flex-1 flex flex-col h-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden relative">
         
-        {/* 상단 타이틀 바 - 지정한 LHJOON 로고 노출 부분 */}
+        {/* 상단 타이틀 바 */}
         <div className="h-16 border-b border-zinc-800 bg-zinc-900 px-4 flex items-center justify-between text-white z-10">
           <div className="flex items-center space-x-2.5">
+            {/* 사이드바가 닫혀 있을 때 ☰ 토글 메뉴 버튼 노출 */}
             {!isSidebarOpen && (
-              <button onClick={() => setIsSidebarOpen(true)} className="p-2 mr-1 text-white bg-zinc-800 rounded-xl hover:bg-zinc-700">
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 mr-1 text-white bg-zinc-800 rounded-xl hover:bg-zinc-700" title="사이드바 열기">
                 <Menu size={18} />
               </button>
             )}
-            {/* 요청하신 로고가 완벽히 출력되는 이미지 태그입니다 */}
             <img src={LHJOON_LOGO_URL} alt="LHJOON Logo" className="w-9 h-9 object-contain border border-zinc-700 rounded-full bg-black p-0.5 shadow-md" />
             <div>
               <div className="flex items-center space-x-2">
@@ -484,7 +485,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
         </div>
       )}
 
-      {/* 확장 기능 모달 컴포넌트들 생략없이 바인딩 유지 */}
+      {/* 확장 기능 모달 컴포넌트 */}
       {showCapsuleModal && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 text-white">
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 max-w-sm w-full">
