@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
-import { LogOut, Plus, Send, Bell, Settings, Image, X, Search, Pin, User } from 'lucide-react';
 
 const socket = io("https://lhjoon-server.vercel.app");
 
@@ -111,12 +110,12 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
               <p className="text-xs text-[#6B5755] truncate font-medium">{myProfile.statusMsg}</p>
             </div>
           </div>
-          <button onClick={onLogout} className="text-[#6B5755] hover:text-[#2C2524] transition-colors"><LogOut size={18} /></button>
+          <button onClick={onLogout} className="text-[#6B5755] hover:text-[#2C2524] transition-colors font-bold">로그아웃</button>
         </div>
 
         <div className="p-3 pb-0">
           <div className="flex items-center space-x-2 bg-white border border-[#D5C2B4] rounded-xl px-3 py-2 focus-within:border-[#FF8E8E] focus-within:ring-1 focus-within:ring-[#FF8E8E] transition-all shadow-sm">
-            <Search size={16} className="text-[#8A7371]" />
+            <span className="text-[#8A7371] text-sm">🔍</span>
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="이야기방 검색..." className="w-full bg-transparent border-none outline-none text-sm text-[#2C2524] placeholder-[#A5908E]" />
           </div>
         </div>
@@ -126,8 +125,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
             const name = prompt('방 이름을 입력하세요:');
             if (name?.trim()) setRooms([...rooms, { id: Date.now(), name: name.trim() + ' 🎈', lastMsg: '새 방이 개설되었어요!', unread: 0, creator: myProfile.nickname, notice: null }]);
           }} className="w-full py-2.5 bg-white hover:bg-[#FDFBF7] text-[#7A5F56] hover:text-[#FF6B6B] rounded-xl flex items-center justify-center space-x-2 text-xs font-bold border border-[#D5C2B4] shadow-sm transition-all">
-            <Plus size={16} />
-            <span>새로운 이야기방 만들기</span>
+            <span>➕ 새로운 이야기방 만들기</span>
           </button>
         </div>
 
@@ -151,9 +149,9 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           <div>
             <h2 className="font-bold text-base text-[#2C2524]">✨ {currentRoom?.name}</h2>
           </div>
-          <div className="flex items-center space-x-4 text-[#7A5F56]">
-            <button className="hover:text-[#2C2524]"><Bell size={20} /></button>
-            <button className="hover:text-[#2C2524]"><Settings size={20} /></button>
+          <div className="flex items-center space-x-4 text-[#7A5F56] font-bold text-sm">
+            <button className="hover:text-[#2C2524]">🔔 알림</button>
+            <button className="hover:text-[#2C2524]">⚙️ 설정</button>
           </div>
         </div>
 
@@ -161,8 +159,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
         {currentRoom?.notice && (
           <div className="bg-[#FFF4EE] border-b border-[#EAD9CE] px-6 py-2.5 flex items-center justify-between text-sm text-[#2C2524] font-medium">
             <div className="flex items-center space-x-2 min-w-0">
-              <Pin size={14} className="text-[#FF5252] shrink-0" />
-              <span className="font-bold text-[#FF5252] shrink-0">[따뜻한 규칙]</span>
+              <span className="font-bold text-[#FF5252] shrink-0">📌 [따뜻한 규칙]</span>
               <span className="truncate text-[#4E4140]">{currentRoom.notice}</span>
             </div>
           </div>
@@ -207,12 +204,12 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           {replyTarget && (
             <div className="bg-[#F3E6DE] px-3 py-1.5 rounded-lg flex items-center justify-between text-xs font-semibold text-[#5C4B49]">
               <span className="truncate">↩️ <b>{replyTarget.sender}</b>님에게 답글 남기는 중...</span>
-              <button onClick={() => setReplyTarget(null)}><X size={14}/></button>
+              <button onClick={() => setReplyTarget(null)}>❌</button>
             </div>
           )}
           <form onSubmit={handleSendMessage} className="flex items-center space-x-3 bg-[#FDFBF7] border border-[#D5C2B4] rounded-2xl px-4 py-3 focus-within:border-[#FF8E8E] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#FF8E8E] transition-all shadow-inner">
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => processImageFile(e.target.files[0])} />
-            <button type="button" onClick={() => fileInputRef.current.click()} className="text-[#7A5F56] hover:text-[#FF5252] transition-colors"><Image size={20} /></button>
+            <button type="button" onClick={() => fileInputRef.current.click()} className="text-[#7A5F56] hover:text-[#FF5252] transition-colors text-lg">🖼️</button>
             <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="따뜻한 이야기를 나누어보세요..." className="flex-1 bg-transparent border-none outline-none text-sm text-[#2C2524] placeholder-[#A5908E]" />
             <button type="submit" disabled={!message.trim()} className="text-[#FF5252] disabled:text-[#D5C2B4] transition-colors font-bold text-base px-1">전송</button>
           </form>
@@ -223,8 +220,8 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-[#D5C2B4] w-full max-w-sm rounded-2xl p-6 relative shadow-2xl text-sm">
-            <button onClick={() => setIsProfileModalOpen(false)} className="absolute top-4 right-4 text-[#7A5F56] hover:text-[#2C2524]"><X size={18} /></button>
-            <h3 className="text-sm font-bold text-[#2C2524] mb-4 flex items-center space-x-2"><User size={16}/> <span>프로필 바꾸기</span></h3>
+            <button onClick={() => setIsProfileModalOpen(false)} className="absolute top-4 right-4 text-[#7A5F56] hover:text-[#2C2524] font-bold">❌</button>
+            <h3 className="text-sm font-bold text-[#2C2524] mb-4">👤 프로필 바꾸기</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-[#7A5F56] mb-1">내 이름</label>
