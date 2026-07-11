@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import { LogOut, Plus, Image, X, Search, Pin, User, Bell, Settings } from 'lucide-react';
 
 const socket = io("https://lhjoon-server.vercel.app");
 
@@ -92,13 +93,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
 
   return (
     <div className="flex h-screen bg-[#FDFBF7] text-[#2C2524] font-sans relative">
-      {isDragging && (
-        <div className="absolute inset-0 z-50 bg-[#F5EBE6]/95 border-4 border-dashed border-[#FF8E8E] flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
-          <p className="text-xl font-bold text-[#7A5F56]">여기에 사진을 놓으면 전송됩니다 🧸</p>
-        </div>
-      )}
-
-      {/* 왼쪽 사이드바 */}
+      {/* 사이드바 */}
       <div className="w-72 bg-[#F3E6DE] border-r border-[#E0D0C5] flex flex-col">
         <div className="p-4 border-b border-[#E0D0C5] flex items-center justify-between bg-[#EAD9CE]">
           <div className="flex items-center space-x-3 cursor-pointer hover:opacity-90" onClick={() => setIsProfileModalOpen(true)}>
@@ -110,13 +105,15 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
               <p className="text-xs text-[#6B5755] truncate font-medium">{myProfile.statusMsg}</p>
             </div>
           </div>
-          <button onClick={onLogout} className="text-[#6B5755] hover:text-[#2C2524] transition-colors font-bold">로그아웃</button>
+          <button onClick={onLogout} className="text-[#6B5755] hover:text-[#2C2524] transition-colors">
+            <LogOut size={18} />
+          </button>
         </div>
 
         <div className="p-3 pb-0">
-          <div className="flex items-center space-x-2 bg-white border border-[#D5C2B4] rounded-xl px-3 py-2 focus-within:border-[#FF8E8E] focus-within:ring-1 focus-within:ring-[#FF8E8E] transition-all shadow-sm">
-            <span className="text-[#8A7371] text-sm">🔍</span>
-            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="이야기방 검색..." className="w-full bg-transparent border-none outline-none text-sm text-[#2C2524] placeholder-[#A5908E]" />
+          <div className="flex items-center space-x-2 bg-white border border-[#D5C2B4] rounded-xl px-3 py-2">
+            <Search size={16} className="text-[#8A7371]" />
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="이야기방 검색..." className="w-full bg-transparent border-none outline-none text-sm text-[#2C2524]" />
           </div>
         </div>
 
@@ -124,74 +121,57 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           <button onClick={() => {
             const name = prompt('방 이름을 입력하세요:');
             if (name?.trim()) setRooms([...rooms, { id: Date.now(), name: name.trim() + ' 🎈', lastMsg: '새 방이 개설되었어요!', unread: 0, creator: myProfile.nickname, notice: null }]);
-          }} className="w-full py-2.5 bg-white hover:bg-[#FDFBF7] text-[#7A5F56] hover:text-[#FF6B6B] rounded-xl flex items-center justify-center space-x-2 text-xs font-bold border border-[#D5C2B4] shadow-sm transition-all">
-            <span>➕ 새로운 이야기방 만들기</span>
+          }} className="w-full py-2.5 bg-white hover:bg-[#FDFBF7] text-[#7A5F56] rounded-xl flex items-center justify-center space-x-2 text-xs font-bold border border-[#D5C2B4]">
+            <Plus size={16} />
+            <span>새로운 이야기방 만들기</span>
           </button>
         </div>
 
-        {/* 방 리스트 */}
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
           {filteredRooms.map(room => (
-            <div key={room.id} onClick={() => setActiveRoomId(room.id)} className={`p-3 rounded-xl cursor-pointer flex items-center justify-between transition-all ${room.id === activeRoomId ? 'bg-white text-[#FF5252] shadow-md border border-[#FFC1C1] font-bold' : 'hover:bg-white/50 text-[#4E4140]'}`}>
+            <div key={room.id} onClick={() => setActiveRoomId(room.id)} className={`p-3 rounded-xl cursor-pointer flex items-center justify-between ${room.id === activeRoomId ? 'bg-white text-[#FF5252] shadow-md border border-[#FFC1C1] font-bold' : 'hover:bg-white/50 text-[#4E4140]'}`}>
               <div className="min-w-0 flex-1">
                 <span className="text-sm truncate block">✨ {room.name}</span>
-                <p className={`text-xs mt-1 truncate ${room.id === activeRoomId ? 'text-[#7A5F56] font-medium' : 'text-[#8A7371]'}`}>{room.lastMsg}</p>
+                <p className="text-xs mt-1 truncate text-[#8A7371]">{room.lastMsg}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* 오른쪽 대화창 */}
+      {/* 대화창 */}
       <div className="flex-1 flex flex-col bg-[#FDFBF7]">
-        {/* 상단바 */}
         <div className="h-16 border-b border-[#E0D0C5] px-6 flex items-center justify-between bg-white shadow-sm">
-          <div>
-            <h2 className="font-bold text-base text-[#2C2524]">✨ {currentRoom?.name}</h2>
-          </div>
-          <div className="flex items-center space-x-4 text-[#7A5F56] font-bold text-sm">
-            <button className="hover:text-[#2C2524]">🔔 알림</button>
-            <button className="hover:text-[#2C2524]">⚙️ 설정</button>
+          <h2 className="font-bold text-base text-[#2C2524]">✨ {currentRoom?.name}</h2>
+          <div className="flex items-center space-x-4 text-[#7A5F56]">
+            <Bell size={20} />
+            <Settings size={20} />
           </div>
         </div>
 
-        {/* 공지 고정바 */}
         {currentRoom?.notice && (
-          <div className="bg-[#FFF4EE] border-b border-[#EAD9CE] px-6 py-2.5 flex items-center justify-between text-sm text-[#2C2524] font-medium">
-            <div className="flex items-center space-x-2 min-w-0">
-              <span className="font-bold text-[#FF5252] shrink-0">📌 [따뜻한 규칙]</span>
-              <span className="truncate text-[#4E4140]">{currentRoom.notice}</span>
-            </div>
+          <div className="bg-[#FFF4EE] border-b border-[#EAD9CE] px-6 py-2.5 flex items-center space-x-2 text-sm text-[#2C2524]">
+            <Pin size={14} className="text-[#FF5252]" />
+            <span className="font-bold text-[#FF5252]">[공지]</span>
+            <span className="truncate text-[#4E4140]">{currentRoom.notice}</span>
           </div>
         )}
 
-        {/* 메시지 타임라인 */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#FAF7F0]">
           {currentRoomMessages.map((msg) => (
             <div key={msg.id} className={`flex items-start space-x-3 ${msg.isMe ? 'justify-end space-x-reverse' : ''}`}>
               {!msg.isMe && (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0 bg-[#A39084]">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white bg-[#A39084]">
                   {msg.sender[0]}
                 </div>
               )}
               <div className="flex flex-col max-w-lg">
-                {!msg.isMe && <span className="text-xs font-bold text-[#5C4B49] mb-1 ml-1">{msg.sender}</span>}
-                {msg.replyTo && (
-                  <div className="bg-[#EAD9CE] text-xs font-medium text-[#5C4B49] px-2.5 py-1 rounded-t-lg mb-[-1px] border border-b-0 border-[#D5C2B4] truncate">
-                    ↩️ {msg.replyTo.sender}: {msg.replyTo.content}
-                  </div>
-                )}
+                {!msg.isMe && <span className="text-xs font-bold text-[#5C4B49] mb-1">{msg.sender}</span>}
                 <div className="flex items-end space-x-2 space-x-reverse">
-                  <div className={`px-4 py-2.5 text-[15px] leading-relaxed rounded-2xl shadow-sm border ${
-                    msg.isMe 
-                      ? 'bg-[#FFA3A3] text-[#1A1110] border-[#FF8E8E] rounded-tr-none font-medium' 
-                      : 'bg-white text-[#1A1110] rounded-tl-none border-[#D5C2B4]'
-                  }`}>
-                    {msg.type === 'image' ? (
-                      <img src={msg.content} alt="전송 이미지" className="max-w-xs rounded-xl shadow-sm" />
-                    ) : msg.content}
+                  <div className={`px-4 py-2.5 text-[15px] rounded-2xl border ${msg.isMe ? 'bg-[#FFA3A3] border-[#FF8E8E]' : 'bg-white border-[#D5C2B4]'}`}>
+                    {msg.type === 'image' ? <img src={msg.content} alt="img" className="max-w-xs rounded-xl" /> : msg.content}
                   </div>
-                  <span className="text-[10px] font-medium text-[#7A5F56] whitespace-nowrap">{msg.time}</span>
+                  <span className="text-[10px] text-[#7A5F56]">{msg.time}</span>
                 </div>
               </div>
             </div>
@@ -199,40 +179,26 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 하단 글 입력창 */}
         <div className="p-4 border-t border-[#E0D0C5] bg-white flex flex-col space-y-2">
-          {replyTarget && (
-            <div className="bg-[#F3E6DE] px-3 py-1.5 rounded-lg flex items-center justify-between text-xs font-semibold text-[#5C4B49]">
-              <span className="truncate">↩️ <b>{replyTarget.sender}</b>님에게 답글 남기는 중...</span>
-              <button onClick={() => setReplyTarget(null)}>❌</button>
-            </div>
-          )}
-          <form onSubmit={handleSendMessage} className="flex items-center space-x-3 bg-[#FDFBF7] border border-[#D5C2B4] rounded-2xl px-4 py-3 focus-within:border-[#FF8E8E] focus-within:bg-white focus-within:ring-1 focus-within:ring-[#FF8E8E] transition-all shadow-inner">
+          <form onSubmit={handleSendMessage} className="flex items-center space-x-3 bg-[#FDFBF7] border border-[#D5C2B4] rounded-2xl px-4 py-3">
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => processImageFile(e.target.files[0])} />
-            <button type="button" onClick={() => fileInputRef.current.click()} className="text-[#7A5F56] hover:text-[#FF5252] transition-colors text-lg">🖼️</button>
-            <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="따뜻한 이야기를 나누어보세요..." className="flex-1 bg-transparent border-none outline-none text-sm text-[#2C2524] placeholder-[#A5908E]" />
-            <button type="submit" disabled={!message.trim()} className="text-[#FF5252] disabled:text-[#D5C2B4] transition-colors font-bold text-base px-1">전송</button>
+            <button type="button" onClick={() => fileInputRef.current.click()} className="text-[#7A5F56]"><Image size={20} /></button>
+            <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="따뜻한 이야기를 나누어보세요..." className="flex-1 bg-transparent border-none outline-none text-sm text-[#2C2524]" />
+            <button type="submit" disabled={!message.trim()} className="text-[#FF5252] font-bold">전송</button>
           </form>
         </div>
       </div>
 
-      {/* 내 정보 설정 팝업 */}
+      {/* 모달 */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-[#D5C2B4] w-full max-w-sm rounded-2xl p-6 relative shadow-2xl text-sm">
-            <button onClick={() => setIsProfileModalOpen(false)} className="absolute top-4 right-4 text-[#7A5F56] hover:text-[#2C2524] font-bold">❌</button>
-            <h3 className="text-sm font-bold text-[#2C2524] mb-4">👤 프로필 바꾸기</h3>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#D5C2B4] w-full max-w-sm rounded-2xl p-6 relative">
+            <button onClick={() => setIsProfileModalOpen(false)} className="absolute top-4 right-4 text-[#7A5F56]"><X size={18} /></button>
+            <h3 className="text-sm font-bold text-[#2C2524] mb-4 flex items-center space-x-2"><User size={16}/> <span>프로필 바꾸기</span></h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-[#7A5F56] mb-1">내 이름</label>
-                <input type="text" value={myProfile.nickname} onChange={(e) => setMyProfile({ ...myProfile, nickname: e.target.value })} className="w-full bg-[#FDFBF7] border border-[#D5C2B4] rounded-xl px-3 py-2 outline-none focus:border-[#FF8E8E] text-[#2C2524] text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-[#7A5F56] mb-1">상태 한마디</label>
-                <input type="text" value={myProfile.statusMsg} onChange={(e) => setMyProfile({ ...myProfile, statusMsg: e.target.value })} className="w-full bg-[#FDFBF7] border border-[#D5C2B4] rounded-xl px-3 py-2 outline-none focus:border-[#FF8E8E] text-[#2C2524] text-sm" />
-              </div>
+              <input type="text" value={myProfile.nickname} onChange={(e) => setMyProfile({ ...myProfile, nickname: e.target.value })} className="w-full bg-[#FDFBF7] border border-[#D5C2B4] rounded-xl px-3 py-2 text-sm" />
             </div>
-            <button type="button" onClick={() => setIsProfileModalOpen(false)} className="w-full mt-6 bg-[#FFA3A3] hover:bg-[#FF8E8E] text-[#1A1110] py-2.5 rounded-xl text-sm font-bold transition-colors shadow-md">수정 완료</button>
+            <button onClick={() => setIsProfileModalOpen(false)} className="w-full mt-6 bg-[#FFA3A3] text-[#1A1110] py-2.5 rounded-xl text-sm font-bold">수정 완료</button>
           </div>
         </div>
       )}
