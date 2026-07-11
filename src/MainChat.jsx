@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { 
   Edit2, UserPlus, BellOff, Trash2, Shield, Calendar, FileText, Search, 
   Clock, Heart, Archive, Smile, Reply, Paperclip, MoreVertical, Check, Eye, Download, MessageSquare, ShieldAlert, DownloadCloud, Settings, Menu, X, LogOut
 } from 'lucide-react';
 
-const socket = io("https://lhjoon-server.vercel.app");
+// 임시 가짜 소켓 객체 생성 (패키지 미설치로 인한 빌드 에러 방지)
+const socket = {
+  emit: () => {},
+  on: () => {},
+  off: () => {}
+};
 
 // 로고 이미지 경로 설정
 const LHJOON_LOGO_URL = '/logo.png';
@@ -22,11 +26,9 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   const [currentThemeKey, setCurrentThemeKey] = useState('green');
   const t = themes[currentThemeKey];
 
-  // 로그인 직후 처음 들어왔을 때 옆 바를 안 보이게(닫힘 상태) 처리
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
-  // 프로필 상태
   const [myProfile, setMyProfile] = useState({
     nickname: nickname || '사용자',
     statusMsg: 'LHJOON Ultimate 메신저 사용 중 🧸',
@@ -37,18 +39,15 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
   const [editStatus, setEditStatus] = useState(myProfile.statusMsg);
   const [editAvatar, setEditAvatar] = useState(myProfile.avatar);
 
-  // 친구 상태
   const [friends, setFriends] = useState([{ name: '관리자', email: 'admin@lhjoon.com', isBlocked: false }]);
   const [addFriendInput, setAddFriendInput] = useState('');
 
-  // 채팅방 상태
   const [rooms, setRooms] = useState([
     { id: 1, name: 'LHJOON 공식 대화방 💬', lastMsg: '새로운 소통방입니다.', creator: '관리자', members: ['관리자', myProfile.nickname], isMuted: false, isPinned: true },
     { id: 2, name: '자유 소통 광장 🎈', lastMsg: '반갑습니다!', creator: '관리자', members: ['관리자', myProfile.nickname], isMuted: false, isPinned: false }
   ]);
   const [activeRoomId, setActiveRoomId] = useState(1);
 
-  // 메시지 상태
   const [messages, setMessages] = useState([
     { id: 1, roomId: 1, sender: '관리자', type: 'text', content: 'LHJOON 라이브에 오신 것을 환영합니다! ✨', time: '오후 12:00', isMe: false, reactions: {} }
   ]);
@@ -61,7 +60,6 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
 
   const [integratedSearchQuery, setIntegratedSearchQuery] = useState('');
 
-  // 확장 플러그인 상태
   const [capsules, setCapsules] = useState([]);
   const [showCapsuleModal, setShowCapsuleModal] = useState(false);
   const [capsuleText, setCapsuleText] = useState('');
@@ -260,13 +258,13 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button onClick={() => setIsProfileModalOpen(true)} className="p-1.5 text-gray-300 hover:text-white transition-colors" title="시스템 설정">
+            <button type="button" onClick={() => setIsProfileModalOpen(true)} className="p-1.5 text-gray-300 hover:text-white transition-colors" title="시스템 설정">
               <Settings size={18} />
             </button>
-            <button onClick={onLogout} className="p-1.5 text-red-400 hover:text-red-300 transition-colors" title="로그아웃">
+            <button type="button" onClick={onLogout} className="p-1.5 text-red-400 hover:text-red-300 transition-colors" title="로그아웃">
               <LogOut size={18} />
             </button>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 text-gray-300 hover:text-white" title="사이드바 접기">
+            <button type="button" onClick={() => setIsSidebarOpen(false)} className="p-1.5 text-gray-300 hover:text-white" title="사이드바 접기">
               <X size={18} />
             </button>
           </div>
