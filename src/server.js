@@ -1,40 +1,39 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-
 const app = express();
-const server = http.createServer(app);
-
-// 친구들의 다른 도메인/IP 접속을 허용하는 CORS 설정
-const io = new Server(server, {
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
   cors: {
-    origin: "*", // 전 세계 어디서든 접속 가능하도록 개방
+    origin: "*", // 프론트엔드가 어디서든 접속할 수 있게 허용
     methods: ["GET", "POST"]
   }
 });
 
-// 실시간 네트워킹 소켓 핸들러
+// Render 또는 Vercel 클라우드가 지정해주는 동적 포트 적용
+const PORT = process.env.PORT || 8080;
+
+app.get('/', (req, res) => {
+  res.send('채팅 서버가 정상적으로 작동 중입니다!');
+});
+
+// 실시간 데이터 송수신 구역
 io.on('connection', (socket) => {
-  console.log(`🌐 유저 접속됨 (ID: ${socket.id})`);
+  console.log('유저가 접속했습니다:', socket.id);
 
-  // 특정 채팅방에 입장 처리
-  socket.on('join_room', (roomId) => {
-    socket.join(roomId);
-    console.log(`🚪 유저가 방 [${roomId}] 에 입장했습니다.`);
-  });
-
-  // 메시지 수신 및 동일 방 유저들에게 실시간 브로드캐스팅
-  socket.on('send_message', (data) => {
-    socket.to(data.roomId).emit('receive_message', data);
+  // [추가] 친구가 메시지를 보냈을 때 처리하는 이벤트
+  socket.on('chat message', (data) => {
+    // 나를 포함하여 접속한 모든 유저에게 메시지 배달
+    io.emit('chat message', {
+      username: data.username || "익명",
+      text: data.text,
+      timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })
+    });
   });
 
   socket.on('disconnect', () => {
-    console.log(`❌ 유저 접속 끊김 (ID: ${socket.id})`);
+    console.log('유저가 나갔습니다:', socket.id);
   });
 });
 
-// ⭐ 렌더 클라우드가 주는 포트(process.env.PORT)를 1순위로 쓰고, 없으면 4000번을 쓰는 핵심 자동 코드입니다!
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`🚀 LHJOON Ultimate 실시간 서버가 ${PORT}번 포트에서 가동 중입니다!`);
+http.listen(PORT, () => {
+  console.log(`서버가 포트 ${PORT}에서 잘 돌아가고 있습니다.`);
 });

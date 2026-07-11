@@ -1,0 +1,22 @@
+{
+  "short_name": "LHJOON",
+  "name": "LHJOON Live Chat",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=192&h=192&fit=crop",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=512&h=512&fit=crop",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FDFBF7",
+  "theme_color": "#FFA3A3",
+  "display": "standalone",
+  "orientation": "portrait"
+}
