@@ -87,12 +87,42 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
     socket.emit("chat message", newImgMsg);
   };
 
+  // 드래그 앤 드롭 핸들러
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processImageFile(files[0]);
+    }
+  };
+
   const currentRoom = rooms.find(r => r.id === activeRoomId) || rooms[0];
   const currentRoomMessages = messages.filter(m => m.roomId === activeRoomId);
   const filteredRooms = rooms.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="flex h-screen bg-[#FDFBF7] text-[#2C2524] font-sans relative">
+    <div 
+      className="flex h-screen bg-[#FDFBF7] text-[#2C2524] font-sans relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-[#F5EBE6]/95 border-4 border-dashed border-[#FF8E8E] flex flex-col items-center justify-center pointer-events-none backdrop-blur-sm">
+          <p className="text-xl font-bold text-[#7A5F56]">여기에 사진을 놓으면 전송됩니다 🧸</p>
+        </div>
+      )}
+
       {/* 사이드바 */}
       <div className="w-72 bg-[#F3E6DE] border-r border-[#E0D0C5] flex flex-col">
         <div className="p-4 border-b border-[#E0D0C5] flex items-center justify-between bg-[#EAD9CE]">
@@ -157,6 +187,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           </div>
         )}
 
+        {/* 메시지창 */}
         <div className="flex-1 p-6 overflow-y-auto space-y-4 bg-[#FAF7F0]">
           {currentRoomMessages.map((msg) => (
             <div key={msg.id} className={`flex items-start space-x-3 ${msg.isMe ? 'justify-end space-x-reverse' : ''}`}>
@@ -167,8 +198,20 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
               )}
               <div className="flex flex-col max-w-lg">
                 {!msg.isMe && <span className="text-xs font-bold text-[#5C4B49] mb-1">{msg.sender}</span>}
+                
+                {/* 답글 대상 표시 */}
+                {msg.replyTo && (
+                  <div className="bg-[#EAD9CE] text-xs font-medium text-[#5C4B49] px-2.5 py-1 rounded-t-lg mb-[-1px] border border-b-0 border-[#D5C2B4] truncate">
+                    ↩️ {msg.replyTo.sender}: {msg.replyTo.content}
+                  </div>
+                )}
+
                 <div className="flex items-end space-x-2 space-x-reverse">
-                  <div className={`px-4 py-2.5 text-[15px] rounded-2xl border ${msg.isMe ? 'bg-[#FFA3A3] border-[#FF8E8E]' : 'bg-white border-[#D5C2B4]'}`}>
+                  <div 
+                    onClick={() => setReplyTarget(msg)} 
+                    title="클릭하면 답글을 작성할 수 있습니다"
+                    className={`px-4 py-2.5 text-[15px] rounded-2xl border cursor-pointer select-none ${msg.isMe ? 'bg-[#FFA3A3] border-[#FF8E8E] rounded-tr-none' : 'bg-white border-[#D5C2B4] rounded-tl-none'}`}
+                  >
                     {msg.type === 'image' ? <img src={msg.content} alt="img" className="max-w-xs rounded-xl" /> : msg.content}
                   </div>
                   <span className="text-[10px] text-[#7A5F56]">{msg.time}</span>
@@ -179,7 +222,16 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* 하단 글 입력창 */}
         <div className="p-4 border-t border-[#E0D0C5] bg-white flex flex-col space-y-2">
+          {/* 답글 진행 상황 바 */}
+          {replyTarget && (
+            <div className="bg-[#F3E6DE] px-3 py-1.5 rounded-lg flex items-center justify-between text-xs font-semibold text-[#5C4B49]">
+              <span className="truncate">↩️ <b>{replyTarget.sender}</b>님에게 답글 남기는 중...</span>
+              <button onClick={() => setReplyTarget(null)}><X size={14}/></button>
+            </div>
+          )}
+
           <form onSubmit={handleSendMessage} className="flex items-center space-x-3 bg-[#FDFBF7] border border-[#D5C2B4] rounded-2xl px-4 py-3">
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => processImageFile(e.target.files[0])} />
             <button type="button" onClick={() => fileInputRef.current.click()} className="text-[#7A5F56]"><Image size={20} /></button>
@@ -189,7 +241,7 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
         </div>
       </div>
 
-      {/* 모달 */}
+      {/* 프로필 모달 */}
       {isProfileModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white border border-[#D5C2B4] w-full max-w-sm rounded-2xl p-6 relative">
