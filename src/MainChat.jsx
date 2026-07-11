@@ -7,15 +7,77 @@ import {
 
 const socket = io("https://lhjoon-server.vercel.app");
 
-// 🎨 13. 디자인 - 브랜드 컬러 기반 깔끔한 UI 다중 테마 (핑크 제외)
+// 🎨 13. 디자인 - 채팅방별 맞춤형 테마 (요청하신 5가지 테마로 완벽 교체 및 핑크 제외)
 const themes = {
-  beige: { name: '포근 베이지 ☕', bg: 'bg-[#FDFBF7]', sidebar: 'bg-[#F3E6DE]', sidebarHeader: 'bg-[#EAD9CE]', border: 'border-[#E0D0C5]', inputBorder: 'border-[#D5C2B4]', chatBg: 'bg-[#FAF7F0]', myMsg: 'bg-[#C19A6B] border-[#A78B71] text-white', otherMsg: 'bg-white border-[#D5C2B4] text-black', text: 'text-[#2C2524]', accent: 'bg-[#C19A6B] text-white' },
-  dark: { name: '다크 모드 🌙', bg: 'bg-[#121212]', sidebar: 'bg-[#1E1E1E]', sidebarHeader: 'bg-[#2A2A2A]', border: 'border-[#333333]', inputBorder: 'border-[#444444]', chatBg: 'bg-[#181818]', myMsg: 'bg-[#D4AF37] border-[#AA7C11] text-black', otherMsg: 'bg-[#2D2D2D] border-[#333333] text-white', text: 'text-[#E0E0E0]', accent: 'bg-[#D4AF37] text-black' },
-  mint: { name: '민트 그린 🌿', bg: 'bg-[#F0FDF4]', sidebar: 'bg-[#DCFCE7]', sidebarHeader: 'bg-[#BBF7D0]', border: 'border-[#86EFAC]', inputBorder: 'border-[#4ADE80]', chatBg: 'bg-[#F0FDF4]', myMsg: 'bg-[#22C55E] border-[#16A34A] text-white', otherMsg: 'bg-white border-[#86EFAC] text-black', text: 'text-[#14532D]', accent: 'bg-[#22C55E] text-white' }
+  blue: { 
+    name: '클래식 블루 💙', 
+    bg: 'bg-[#1E3A8A]', 
+    sidebar: 'bg-[#0F172A]', 
+    sidebarHeader: 'bg-[#1E293B]', 
+    border: 'border-[#334155]', 
+    inputBorder: 'border-[#475569]', 
+    chatBg: 'bg-[#1E3A8A]', 
+    myMsg: 'bg-[#EFF6FF] border-[#93C5FD] text-black', 
+    otherMsg: 'bg-[#3B82F6] border-[#1D4ED8] text-white', 
+    text: 'text-[#E2E8F0]', 
+    accent: 'bg-[#3B82F6] text-white' 
+  },
+  green: { 
+    name: '포레스트 그린 🌿', 
+    bg: 'bg-[#14532D]', 
+    sidebar: 'bg-[#064E3B]', 
+    sidebarHeader: 'bg-[#022C22]', 
+    border: 'border-[#0F766E]', 
+    inputBorder: 'border-[#115E59]', 
+    chatBg: 'bg-[#14532D]', 
+    myMsg: 'bg-[#F0FDF4] border-[#86EFAC] text-black', 
+    otherMsg: 'bg-[#22C55E] border-[#16A34A] text-white', 
+    text: 'text-[#F0FDF4]', 
+    accent: 'bg-[#22C55E] text-white' 
+  },
+  dark: { 
+    name: '미드나잇 다크 🌙', 
+    bg: 'bg-[#0F172A]', 
+    sidebar: 'bg-[#020617]', 
+    sidebarHeader: 'bg-[#0F172A]', 
+    border: 'border-[#1E293B]', 
+    inputBorder: 'border-[#334155]', 
+    chatBg: 'bg-[#0F172A]', 
+    myMsg: 'bg-[#CBD5E1] border-[#94A3B8] text-black', 
+    otherMsg: 'bg-[#334155] border-[#475569] text-white', 
+    text: 'text-[#F8FAFC]', 
+    accent: 'bg-[#38BDF8] text-black' 
+  },
+  orange: { 
+    name: '선셋 오렌지 🍊', 
+    bg: 'bg-[#7C2D12]', 
+    sidebar: 'bg-[#451A03]', 
+    sidebarHeader: 'bg-[#7C2D12]', 
+    border: 'border-[#9A3412]', 
+    inputBorder: 'border-[#B45309]', 
+    chatBg: 'bg-[#7C2D12]', 
+    myMsg: 'bg-[#FFF7ED] border-[#FFEDD5] text-black', 
+    otherMsg: 'bg-[#EA580C] border-[#C2410C] text-white', 
+    text: 'text-[#FFF7ED]', 
+    accent: 'bg-[#EA580C] text-white' 
+  },
+  purple: { 
+    name: '코지 퍼플 🍇', 
+    bg: 'bg-[#4C1D95]', 
+    sidebar: 'bg-[#2E1065]', 
+    sidebarHeader: 'bg-[#4C1D95]', 
+    border: 'border-[#5B21B6]', 
+    inputBorder: 'border-[#6D28D9]', 
+    chatBg: 'bg-[#4C1D95]', 
+    myMsg: 'bg-[#F5F3FF] border-[#DDD6FE] text-black', 
+    otherMsg: 'bg-[#8B5CF6] border-[#7C3AED] text-white', 
+    text: 'text-[#F5F3FF]', 
+    accent: 'bg-[#8B5CF6] text-white' 
+  }
 };
 
 export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) {
-  const [currentThemeKey, setCurrentThemeKey] = useState('beige');
+  const [currentThemeKey, setCurrentThemeKey] = useState('blue');
   const t = themes[currentThemeKey];
 
   // 👤 3. 프로필 상태 관리 (사진, 이름, 상태메시지)
@@ -55,7 +117,6 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
 
   // 🔍 16. 통합 및 조건별 검색창 상태
   const [integratedSearchQuery, setIntegratedSearchQuery] = useState('');
-  const [showSearchBox, setShowSearchBox] = useState(false);
 
   // ⭐ 9. LHJOON 전용 특별 기능 (타임캡슐, 추억 보관함)
   const [capsules, setCapsules] = useState([]);
@@ -241,16 +302,16 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
         {/* 🎨 테마 교체 및 PIN 보안 제어판 */}
         <div className="p-3 border-b flex flex-col space-y-2 bg-white/20">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold">🎨 테마 스위처</span>
+            <span className="font-bold text-black">🎨 테마 스위처</span>
             <div className="flex gap-1">
               {Object.keys(themes).map(k => (
-                <button key={k} onClick={() => setCurrentThemeKey(k)} className={`text-[10px] px-1.5 py-0.5 rounded border ${currentThemeKey === k ? 'bg-white font-bold' : 'opacity-60 bg-white/30'}`}>{themes[k].name.split(' ')[0]}</button>
+                <button key={k} onClick={() => setCurrentThemeKey(k)} className={`text-[10px] px-1.5 py-0.5 rounded border ${currentThemeKey === k ? 'bg-white font-bold text-black' : 'opacity-60 bg-white/30 text-black'}`}>{themes[k].name.split(' ')[0]}</button>
               ))}
             </div>
           </div>
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-bold text-gray-600">🔒 4자리 앱 잠금 활성화</span>
-            <button onClick={() => { const p = prompt('새로운 PIN 4자리를 설정하세요 (해제는 공백):'); setSavedPin(p || ''); if (p) localStorage.setItem('lhjoon_app_pin', p); else localStorage.removeItem('lhjoon_app_pin'); }} className="bg-white border px-2 py-0.5 rounded font-bold text-xs">{savedPin ? '설정됨 (변경)' : '설정하기'}</button>
+            <button onClick={() => { const p = prompt('새로운 PIN 4자리를 설정하세요 (해제는 공백):'); setSavedPin(p || ''); if (p) localStorage.setItem('lhjoon_app_pin', p); else localStorage.removeItem('lhjoon_app_pin'); }} className="bg-white border px-2 py-0.5 rounded font-bold text-xs text-black">{savedPin ? '설정됨 (변경)' : '설정하기'}</button>
           </div>
         </div>
 
@@ -281,7 +342,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
             </div>
             <div className="space-y-1">
               {rooms.map(room => (
-                <div key={room.id} onClick={() => setActiveRoomId(room.id)} className={`p-2.5 rounded-xl cursor-pointer flex items-center justify-between group transition-all ${room.id === activeRoomId ? 'bg-white shadow-md font-bold border-l-4 border-[#C19A6B]' : 'hover:bg-white/40'}`}>
+                <div key={room.id} onClick={() => setActiveRoomId(room.id)} className={`p-2.5 rounded-xl cursor-pointer flex items-center justify-between group transition-all ${room.id === activeRoomId ? 'bg-white shadow-md font-bold border-l-4 border-blue-500' : 'hover:bg-white/40'}`}>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-black truncate">{room.isPinned ? '📌 ' : '💬 '}{room.name}</p>
                     <p className="text-[11px] text-gray-500 font-normal truncate mt-0.5">{room.lastMsg}</p>
@@ -337,11 +398,11 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
         <div className={`flex-1 p-4 overflow-y-auto space-y-3.5 ${t.chatBg}`}>
           {filteredMessages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.isMe ? 'items-end' : 'items-start'} group`}>
-              <span className="text-[10px] text-gray-500 mb-0.5 px-1 font-bold">{msg.sender}</span>
+              <span className={`text-[10px] mb-0.5 px-1 font-bold ${currentThemeKey === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{msg.sender}</span>
               
               {/* 답장 타깃 인클루드 컨테이너 */}
               {msg.replyTo && (
-                <div className="bg-black/5 text-[10px] px-2 py-0.5 rounded-t-lg text-gray-600 max-w-xs truncate">↩️ {msg.replyTo.content}</div>
+                <div className="bg-black/5 text-[10px] px-2 py-0.5 rounded-t-lg text-gray-500 max-w-xs truncate">↩️ {msg.replyTo.content}</div>
               )}
 
               <div className="flex items-end space-x-1.5 space-x-reverse max-w-md">
@@ -375,7 +436,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
                 {/* 메시지별 정밀 조작 서브 기어 레이블 */}
                 <div className="text-right text-[9px] text-gray-400 font-medium">
                   <p>{msg.time}</p>
-                  <p className="text-amber-700 font-bold">읽음 {msg.readCount || 1}</p>
+                  <p className="text-amber-600 font-bold">읽음 {msg.readCount || 1}</p>
                   <div className="opacity-0 group-hover:opacity-100 flex gap-1 mt-1 transition-opacity">
                     <button onClick={() => setReplyTarget(msg)} className="text-gray-500" title="답장"><Reply size={10} /></button>
                     <button onClick={() => handleAddReaction(msg.id, '👍')} className="text-xs">👍</button>
@@ -395,7 +456,7 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
 
           {/* 5. 상대방 입력 중 상태 알림 노티바 */}
           {isTyping && (
-            <div className="text-[11px] text-gray-500 italic animate-pulse px-2">✍️ {typingUser}님이 열심히 메시지를 입력하고 있습니다...</div>
+            <div className="text-[11px] text-gray-400 italic animate-pulse px-2">✍️ {typingUser}님이 열심히 메시지를 입력하고 있습니다...</div>
           )}
         </div>
 
@@ -416,14 +477,14 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
             </div>
           )}
 
-          <form onSubmit={(e) => handleSendMessage(e)} className={`flex items-center space-x-2 border ${t.inputBorder} rounded-xl px-3 py-2 bg-[#FDFBF7]`}>
+          <form onSubmit={(e) => handleSendMessage(e)} className={`flex items-center space-x-2 border ${t.inputBorder} rounded-xl px-3 py-2 bg-white`}>
             <button type="button" onClick={() => fileInputRef.current.click()} className="text-gray-500 hover:text-black" title="6. 모든 파일 통합 전송">
               <Paperclip size={16} />
             </button>
             <input type="file" ref={fileInputRef} onChange={handleFileUploadClick} className="hidden" />
 
             <input type="text" value={message} onChange={handleInputChange} placeholder="대화 내용을 타이핑하세요..." className="flex-1 bg-transparent border-none outline-none text-xs text-black" />
-            <button type="submit" disabled={!message.trim()} className="text-amber-800 font-bold text-xs disabled:opacity-30">보내기</button>
+            <button type="submit" disabled={!message.trim()} className="text-blue-600 font-bold text-xs disabled:opacity-30">보내기</button>
           </form>
         </div>
       </div>
@@ -538,11 +599,11 @@ export default function MainChat({ onLogout, nickname, savedPin, setSavedPin }) 
               ) : activeViewerFile.type === 'pdf' ? (
                 <div className="text-center"><FileText size={48} className="text-red-500 mx-auto" /><p className="text-xs font-bold mt-2">{activeViewerFile.content}</p><p className="text-[11px] text-gray-500">인앱 내장 PDF 가상 샌드박스로 열람 중</p></div>
               ) : (
-                <div className="text-center"><FileText size={48} className="text-gray-500 mx-auto" /><p className="text-xs font-bold mt-2">{activeViewerFile.content}</p><p className="text-[11px] text-gray-400">기타 압축/문서 파일 형식 리포트</p></div>
+                <div className="text-center"><FileText size={48} className="text-gray-500 mx-auto" /><p className="text-xs font-bold mt-2">{activeViewerFile.content}</p><p className="text-[11px] text-gray-500">지정된 다운로드 경로를 활용하세요</p></div>
               )}
             </div>
             <div className="mt-4 flex gap-2">
-              <a href={activeViewerFile.fileUrl} download={activeViewerFile.content} className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"><Download size={14} /> 파일 로컬 기기에 저장 (다운로드)</a>
+              <a href={activeViewerFile.fileUrl} download={activeViewerFile.content} className="flex-1 bg-gray-900 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"><Download size={14} /> 로컬 다운로드</a>
             </div>
           </div>
         </div>
