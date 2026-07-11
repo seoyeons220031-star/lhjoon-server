@@ -1,5 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { LogOut, Plus, MessageSquare, Send, Bell, Settings, Image, Calendar, Trash2, Edit2, Copy, MoreVertical, X, Maximize2, Search, CornerUpLeft, Star, ArrowRight, Pin, Clock, User, Smile } from 'lucide-react';
+
+// 백엔드 Vercel 주소와 소켓 실시간 연결 인프라 구축
+const socket = io("https://lhjoon-server.vercel.app");
 
 export default function MainChat({ onLogout, nickname: initialNickname }) {
   // --- [상태 관리: 사용자 / 설정] ---
@@ -40,6 +44,42 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // 💡 [소켓 네트워크 이벤트 수신 등록]
+  useEffect(() => {
+    // 백엔드 서버로부터 브로드캐스팅되는 실시간 메시지 처리
+    socket.on("chat message", (data) => {
+      // 내가 보낸 메시지는 handleSendMessage에서 이미 로컬 추가했으므로, 
+      // 소켓 아이디 구분이 없으므로 닉네임과 방 ID를 대조하여 중복 방지 처리합니다.
+      setMessages((prev) => {
+        const isDuplicate = prev.some(m => m.id === data.id);
+        if (isDuplicate) return prev;
+        
+        return [...prev, {
+          id: data.id,
+          roomId: data.roomId,
+          sender: data.sender,
+          type: data.type,
+          content: data.content,
+          time: data.time,
+          isMe: data.sender === myProfile.nickname, // 실시간 비교 후 판단
+          emojis: data.emojis || {},
+          isStarred: false,
+          replyTo: data.replyTo || null,
+          unlockAt: data.unlockAt || null
+        }];
+      });
+
+      // 왼쪽 룸 리스트의 최신 메시지 텍스트 실시간 동기화
+      setRooms(prevRooms => 
+        prevRooms.map(r => r.id === data.roomId ? { ...r, lastMsg: data.type === 'capsule' ? '🔒 타임캡슐이 도착했습니다.' : (data.type === 'image' ? '🖼️ 사진을 보냈습니다.' : data.content) } : r)
+      );
+    });
+
+    return () => {
+      socket.off("chat message");
+    };
+  }, [myProfile.nickname]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeRoomId]);
@@ -48,34 +88,41 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
     return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // --- [핵심 로직: 메시지 발송 인프라] ---
+  // --- [핵심 로직: 메시지 발송 인프라 + 소켓 연동] ---
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!message.trim()) return;
 
+    const msgId = Date.now();
+    const formattedTime = getFormattedTime();
+
     const newMsg = {
-      id: Date.now(),
+      id: msgId,
       roomId: activeRoomId,
       sender: myProfile.nickname,
       type: specialType === 'capsule' ? 'capsule' : 'text',
       content: message,
-      time: getFormattedTime(),
+      time: formattedTime,
       isMe: true,
       emojis: {},
       isStarred: false,
       replyTo: replyTarget ? { sender: replyTarget.sender, content: replyTarget.content } : null,
-      unlockAt: specialType === 'capsule' ? Date.now() + 10000 : null // 10초 후 열리는 타임캡슐 예시
+      unlockAt: specialType === 'capsule' ? Date.now() + 10000 : null 
     };
 
-    // 예약 메시지일 경우 얼럿 처리 후 저장 보류 시뮬레이션
     if (specialType === 'reserve') {
       alert(`[예약 완료] ${unlockTime || '설정된 시간'}에 메시지가 자동 발송됩니다.`);
       resetInputOption();
       return;
     }
 
+    // 1. 내 화면에 즉시 띄우기
     setMessages(prev => [...prev, newMsg]);
     setRooms(rooms.map(r => r.id === activeRoomId ? { ...r, lastMsg: specialType === 'capsule' ? '🔒 타임캡슐이 도착했습니다.' : message } : r));
+
+    // 2. 💡 실시간 소켓 서버로 데이터 송신 (다른 사람들에게 전송)
+    socket.emit("chat message", newMsg);
+
     resetInputOption();
   };
 
@@ -86,22 +133,32 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
     setIsTimeMenuOpen(false);
   };
 
-  // --- [멀티미디어 드래그 앤 드롭] ---
+  // --- [멀티미디어 드래그 앤 드롭 + 소켓 연동] ---
   const processImageFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
+    
     const imageUrl = URL.createObjectURL(file);
+    const msgId = Date.now();
+    const formattedTime = getFormattedTime();
+
     const newImgMsg = {
-      id: Date.now(),
+      id: msgId,
       roomId: activeRoomId,
       sender: myProfile.nickname,
       type: 'image',
       content: imageUrl,
-      time: getFormattedTime(),
+      time: formattedTime,
       isMe: true,
       emojis: {},
       isStarred: false
     };
+
+    // 1. 내 화면에 이미지 즉시 추가
     setMessages(prev => [...prev, newImgMsg]);
+    setRooms(rooms.map(r => r.id === activeRoomId ? { ...r, lastMsg: '🖼️ 사진을 보냈습니다.' } : r));
+
+    // 2. 💡 소켓 서버를 통해 상대방 대화창에도 실시간 이미지 쏘기
+    socket.emit("chat message", newImgMsg);
   };
 
   // --- [액션 빌더: 답장, 즐겨찾기, 이모지, 공지] ---
@@ -252,7 +309,11 @@ export default function MainChat({ onLogout, nickname: initialNickname }) {
                       <span className="flex items-center space-x-2 text-xs italic opacity-90">
                         <Clock size={13} /> <span>🔒 비밀 타임캡슐 메시지가 보관되었습니다.</span>
                       </span>
-                    ) : msg.content}
+                    ) : msg.type === 'image' ? (
+                      <img src={msg.content} alt="전송 이미지" className="max-w-xs rounded-xl border border-[#4A312C] shadow-inner" />
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                   
                   {msg.isStarred && <Star size={12} className="text-amber-400 fill-amber-400 absolute top-0 -left-4" />}
